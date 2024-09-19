@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:test_for_serial_port/app/shared/themes/app_colors.dart';
-import 'package:test_for_serial_port/app/shared/themes/app_dimensions.dart';
+import 'package:test_for_serial_port/app/shared/themes/app_icons.dart';
 
 class BottomNavigationWidget extends StatefulWidget {
   const BottomNavigationWidget({super.key});
 
-  @override
+  @override   
   State<BottomNavigationWidget> createState() => _BottomNavigationWidgetState();
 }
 
@@ -31,32 +31,22 @@ class _BottomNavigationWidgetState extends State<BottomNavigationWidget> {
       child: Row(
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildBottomNavigationBarItem(
-            key: 'HomeIconButton',
-            icon: Icons.home,
+            icon: AppIcons.homeIconSecondary,
             index: 0,
-            route: 'forms',
+            route: 'home',
           ),
           _buildBottomNavigationBarItem(
-            key: 'PublicIconButton',
-            icon: Icons.public,
+            icon: AppIcons.historyIconSecondary,
             index: 1,
-            route: 'map',
+            route: 'history',
           ),
-          const SizedBox(width: 48),
           _buildBottomNavigationBarItem(
-            key: 'AddIconButton',
-            icon: Icons.add,
+            icon: AppIcons.barChartIconSecondary,
             index: 2,
-            route: 'create-form',
-          ),
-          _buildBottomNavigationBarItem(
-            key: 'SettingsIconButton',
-            icon: Icons.settings,
-            index: 3,
-            route: 'profile',
+            route: 'charts',
           ),
         ],
       ),
@@ -64,20 +54,14 @@ class _BottomNavigationWidgetState extends State<BottomNavigationWidget> {
   }
 
   Widget _buildBottomNavigationBarItem(
-      {required String key,
-      required IconData icon,
-      required int index,
-      required String route}) {
+      {required Icon icon, required int index, required String route}) {
     return IconButton(
-      alignment: Alignment.center,
-      key: Key(key),
-      icon: Icon(
-        icon,
-        color: _selectedIndex == index
-            ? AppColors.secondary
-            : AppColors.secondaryGrey,
-        size: AppDimensions.iconLarge,
+      style: ButtonStyle(
+        iconColor: WidgetStatePropertyAll(AppColors.secondary),
       ),
+      alignment: Alignment.center,
+      color: AppColors.secondary,
+      icon: icon,
       onPressed: () => _onItemTapped(index, route),
     );
   }
