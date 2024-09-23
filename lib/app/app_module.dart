@@ -2,9 +2,7 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:test_for_serial_port/app/controller/provider/serial_port_provider.dart';
 import 'package:test_for_serial_port/app/services/serial_reader_service.dart';
 import 'package:test_for_serial_port/app/services/serial_service.dart';
-import 'package:test_for_serial_port/app/views/home/charts_page.dart';
-import 'package:test_for_serial_port/app/views/home/history_page.dart';
-import 'package:test_for_serial_port/app/views/home/home_page.dart';
+import 'package:test_for_serial_port/app/views/home/pages/home_page.dart';
 import 'package:test_for_serial_port/app/views/landing/landing_page.dart';
 import 'package:test_for_serial_port/app/views/landing/splash_page.dart';
 
@@ -37,14 +35,14 @@ class HomeModule extends Module {
             '/home',
             child: (context) => const HomePage(),
           ),
-          ChildRoute(
-            '/charts',
-            child: (context) => const ChartsPage(),
-          ),
-          ChildRoute(
-            '/history',
-            child: (context) => const HistoryPage(),
-          ),
+          // ChildRoute(
+          //   '/charts',
+          //   child: (context) => const ChartsPage(),
+          // ),
+          // ChildRoute(
+          //   '/history',
+          //   child: (context) => const HistoryPage(),
+          // ),
         ]);
   }
 }
