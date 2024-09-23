@@ -1,14 +1,15 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-
 class MeasurementModel {
-  final double moisture;
-  final double temperature;
-  final double pressure;
-  final LatLng latLong;
-
-  MeasurementModel(
-      {required this.moisture,
-      required this.temperature,
-      required this.pressure,
-      required this.latLong});
+  final int sensorId; 
+  final double value; 
+  final DateTime timestamp; 
+  final double? latitude; 
+  final double? longitude; 
+  
+  MeasurementModel({
+    required this.sensorId,
+    required this.value,
+    required this.timestamp,
+    required this.latitude,
+    required this.longitude,
+  });
 }
