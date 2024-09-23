@@ -7,28 +7,47 @@ final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
 
 abstract class GlobalSnackBar {
   static void error(String message) {
-    rootScaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
-      backgroundColor: AppColors.error,
-      width: 500,
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 5),
-      content: Text(
-        message,
-        style: AppTextStyles.bodyText1.copyWith(color: AppColors.secondary),
-      ),
-    ));
+    if (rootScaffoldMessengerKey.currentState != null) {
+      rootScaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
+        backgroundColor: AppColors.error,
+        width: 500,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        content: Text(
+          message,
+          style: AppTextStyles.bodyText1.copyWith(color: AppColors.secondary),
+        ),
+      ));
+    }
   }
 
   static void success(String message) {
-    rootScaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
-      backgroundColor: AppColors.primary,
-      width: 600,
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 5),
-      content: Text(
-        message,
-        style: AppTextStyles.bodyText1.copyWith(color: AppColors.secondary),
-      ),
-    ));
+    if (rootScaffoldMessengerKey.currentState != null) {
+      rootScaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
+        backgroundColor: AppColors.primary,
+        width: 600,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        content: Text(
+          message,
+          style: AppTextStyles.bodyText1.copyWith(color: AppColors.secondary),
+        ),
+      ));
+    }
+  }
+
+   static void info(String message) {
+    if (rootScaffoldMessengerKey.currentState != null) {
+      rootScaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
+        backgroundColor: AppColors.blue,
+        width: 600,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 5),
+        content: Text(
+          message,
+          style: AppTextStyles.bodyText1.copyWith(color: AppColors.secondary),
+        ),
+      ));
+    }
   }
 }
