@@ -16,5 +16,9 @@ class InputCapturingDataState extends InputState {
 }
 
 class InputConnectionClosedState extends InputState {
-  InputConnectionClosedState() : super('Conexão encerrada e porta serial desconectada.');
+  InputConnectionClosedState() : super('Conexão encerrada com porta serial desconectada.');
+}
+
+class InputErrorState extends InputState {
+   InputErrorState() : super('Erro na porta serial.');
 }

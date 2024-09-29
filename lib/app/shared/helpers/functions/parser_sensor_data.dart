@@ -17,7 +17,7 @@ Future<List<MeasurementModel>> processSerialData(Uint8List data, Position? posit
   double? latitude = position?.latitude;
   double? longitude = position?.longitude;
 
-  // Criar os objetos MeasurementModel para os dois sensores
+  // Criar os objetos MeasurementModel para o sensor
   MeasurementModel measurement1 = MeasurementModel(
     sensorId: sensorId,
     value: sensor1Value.toDouble(),

@@ -1,4 +1,5 @@
 import 'package:test_for_serial_port/app/models/measurement_model.dart';
+import 'package:test_for_serial_port/app/shared/helpers/models/measurement_helper_model.dart';
 
 class MeasurementHistory {
   final String sensorId;
@@ -12,4 +13,10 @@ class MeasurementHistory {
     required this.sensor1Measurements,
     required this.sensor2Measurements,
   });
+
+  double get sensor1MeasurementsAverage =>
+      MeasurementHelper.calculateAverage(sensor1Measurements);
+      
+  double get sensor2MeasurementsAverage =>
+      MeasurementHelper.calculateAverage(sensor2Measurements);
 }
