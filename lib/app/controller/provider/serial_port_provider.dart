@@ -1,6 +1,5 @@
 import 'dart:async';
-import 'dart:typed_data';
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,16 +9,17 @@ import 'package:test_for_serial_port/app/models/sensor_model.dart';
 import 'package:test_for_serial_port/app/services/location_service.dart';
 import 'package:test_for_serial_port/app/shared/helpers/functions/global_snackbar.dart';
 import 'package:test_for_serial_port/app/views/home/state/measurement_state.dart';
-
 import '../../shared/helpers/functions/parser_sensor_data.dart';
 
 class SerialPortProvider extends ChangeNotifier {
-  final SerialPort port;
+  List<String> availablePorts = [];
+  String? selectedPort;
+  SerialPort? port;
   InputState _state = InputWaitingConnectionState();
   Timer? _monitoringTimer;
   StreamSubscription? _portSubscription;
   List<int> buffer = [];
-  final List<SensorModel> sensors = []; // Lista de sensores
+  final List<SensorModel> sensors = [];
   final LocationService locationService = LocationService();
 
   String? currentSensorId;
@@ -27,22 +27,22 @@ class SerialPortProvider extends ChangeNotifier {
   List<MeasurementModel> sensor1TempMeasurements = [];
   List<MeasurementModel> sensor2TempMeasurements = [];
 
-  SerialPortProvider(this.port);
+  SerialPortProvider() {
+    listAvailablePorts();
+  }
 
   InputState get state => _state;
 
-  // Inicia o monitoramento da porta serial quando a aplicação é aberta
   void startMonitoring() {
     _monitoringTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
       _checkConnection();
     });
   }
 
-  // Verifica se a porta serial está conectada
   void _checkConnection() {
-    if (port.isOpen) {
-        _updateState(InputCapturingDataState());
-        _startReading();
+    if (port != null && port!.isOpen) {
+      _updateState(InputCapturingDataState());
+      _startReading();
     } else {
       if (_state is! InputCapturingDataState) {
         _updateState(InputConnectionClosedState());
@@ -51,59 +51,68 @@ class SerialPortProvider extends ChangeNotifier {
     }
   }
 
-  // Atualiza o estado da conexão e exibe um SnackBar
   void _updateState(InputState newState) {
     _state = newState;
     notifyListeners();
 
-    if (newState is InputWaitingConnectionState) {
-      GlobalSnackBar.error('Nenhuma porta encontrada');
-    } else if (newState is InputEstablishingConnectionState) {
-      GlobalSnackBar.success('Porta encontrada e conectada');
-    } else if (newState is InputCapturingDataState) {
-      GlobalSnackBar.info('Captando dados...');
-    } else if (newState is InputConnectionClosedState) {
-      GlobalSnackBar.info('Porta desconectada');
-    } else if (newState is InputErrorState) {
-      GlobalSnackBar.error('Erro na porta serial');
+    switch (newState.runtimeType) {
+      case const (InputWaitingConnectionState):
+        GlobalSnackBar.error('Nenhuma porta encontrada');
+        break;
+      case const (InputEstablishingConnectionState):
+        GlobalSnackBar.success('Porta encontrada e conectada');
+        break;
+      case const (InputCapturingDataState):
+        GlobalSnackBar.info('Captando dados...');
+        break;
+      case const (InputConnectionClosedState):
+        GlobalSnackBar.info('Porta desconectada');
+        break;
+      case const (InputErrorState):
+        GlobalSnackBar.error('Erro na porta serial');
+        break;
     }
   }
 
-  // Inicia a leitura dos dados da porta serial
   void _startReading() {
-    if (!port.openReadWrite()) {
-      GlobalSnackBar.error('Erro ao abrir a porta');
-    }
-
-    final reader = SerialPortReader(port);
-    _portSubscription = reader.stream.listen((data) async {
-      buffer.addAll(data);
-      if (buffer.length >= 6 && buffer[5] == 13) {
-        Position? position = await locationService.getCurrentLocation();
-
-        List<MeasurementModel> measurements =
-            await processSerialData(Uint8List.fromList(buffer), position);
-
-        currentSensorId = measurements.first.sensorId.toString();
-
-        bool isSensorExist =
-            sensors.any((sensor) => sensor.id == currentSensorId);
-
-        if (isSensorExist) {
-          sensor1TempMeasurements.add(measurements[0]);
-          sensor2TempMeasurements.add(measurements[1]);
-
-          GlobalSnackBar.info(
-              'Medições temporárias do sensor $currentSensorId atualizadas.');
-        } else {
-          GlobalSnackBar.error(
-              'Sensor $currentSensorId não encontrado na lista.');
-        }
-
-        buffer.clear();
-        notifyListeners();
+    try {
+      if (port == null || !port!.openReadWrite()) {
+        throw Exception('Erro ao abrir a porta');
       }
-    });
+
+      final reader = SerialPortReader(port!);
+
+      _portSubscription = reader.stream
+          .cast<List<int>>()
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) async {
+        // Processa cada linha de dados
+        try {
+          Position? position = await locationService.getCurrentLocation();
+          List<MeasurementModel> measurements =
+              await processSerialData(line, position);
+
+          // Processa as medições para o sensor atual
+          _processMeasurements(measurements);
+
+          notifyListeners();
+        } catch (e) {
+          GlobalSnackBar.error('Erro ao processar dados: ${e.toString()}');
+        }
+      });
+    } catch (e) {
+      GlobalSnackBar.error('Erro ao iniciar a leitura: ${e.toString()}');
+    }
+  }
+
+  void _processMeasurements(List<MeasurementModel> measurements) {
+    currentSensorId = measurements.first.sensorId.toString();
+    sensor1TempMeasurements.add(measurements[0]);
+    sensor2TempMeasurements.add(measurements[1]);
+
+    GlobalSnackBar.info(
+        'Medições temporárias do sensor $currentSensorId atualizadas.');
   }
 
   void finalizeReading() {
@@ -134,22 +143,47 @@ class SerialPortProvider extends ChangeNotifier {
     }
   }
 
-  // Para a leitura quando a conexão é perdida e atualiza o histórico do sensor atual
   void _stopReading() {
     _portSubscription?.cancel();
-    port.close();
+    port?.close();
 
     finalizeReading();
-
     _updateState(InputConnectionClosedState());
   }
 
-  // Para o monitoramento ao encerrar a aplicação
   void stopMonitoring() {
     _monitoringTimer?.cancel();
     _portSubscription?.cancel();
-    if (port.isOpen) {
-      port.close();
+    port?.close();
+    _setNoConnection();
+  }
+
+  void listAvailablePorts() {
+    availablePorts = SerialPort.availablePorts;
+    notifyListeners();
+  }
+
+  void selectPort(String portName) {
+    selectedPort = portName;
+    port = SerialPort(portName);
+
+    if (!port!.openReadWrite()) {
+      selectedPort = null;
+      GlobalSnackBar.error('Erro ao abrir a porta $portName');
+    } else {
+      GlobalSnackBar.success('Porta $portName conectada com sucesso');
+
+      _updateState(InputCapturingDataState());
+
+      _startReading();
+
+      notifyListeners();
     }
+  }
+
+  void _setNoConnection() {
+    selectedPort = null;
+    _updateState(InputWaitingConnectionState());
+    notifyListeners();
   }
 }

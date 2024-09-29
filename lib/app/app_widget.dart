@@ -18,21 +18,14 @@ class AppWidget extends StatelessWidget {
         systemNavigationBarColor: AppColors.primary,
       ),
     );
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider<SerialPortProvider>.value(
-          value: Modular.get<SerialPortProvider>(),
-        )
-      ],
-      child: MaterialApp.router(
-        scaffoldMessengerKey: rootScaffoldMessengerKey,
-        debugShowCheckedModeBanner: false,
-        title: 'Formulários',
-        routeInformationParser: Modular.routeInformationParser,
-        routerDelegate: Modular.routerDelegate,
-        theme: AppThemes.lightTheme,
-        themeMode: ThemeMode.system,
-      ),
+    return MaterialApp.router(
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
+      debugShowCheckedModeBanner: false,
+      title: 'Formulários',
+      routeInformationParser: Modular.routeInformationParser,
+      routerDelegate: Modular.routerDelegate,
+      theme: AppThemes.lightTheme,
+      themeMode: ThemeMode.system,
     );
 
     // return

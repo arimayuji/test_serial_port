@@ -18,7 +18,7 @@ class _BottomNavigationWidgetState extends State<BottomNavigationWidget> {
       setState(() {
         _selectedIndex = index;
       });
-      Modular.to.navigate('/home/$route');
+      Modular.to.navigate('/home$route');
     }
   }
 
@@ -36,17 +36,17 @@ class _BottomNavigationWidgetState extends State<BottomNavigationWidget> {
           _buildBottomNavigationBarItem(
             icon: AppIcons.homeIconSecondary,
             index: 0,
-            route: 'home',
+            route: '/',
           ),
           _buildBottomNavigationBarItem(
             icon: AppIcons.historyIconSecondary,
             index: 1,
-            route: 'history',
+            route: '/history',
           ),
           _buildBottomNavigationBarItem(
             icon: AppIcons.barChartIconSecondary,
             index: 2,
-            route: 'charts',
+            route: '/serial_port_selection',
           ),
         ],
       ),

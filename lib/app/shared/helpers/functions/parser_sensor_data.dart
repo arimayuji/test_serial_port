@@ -1,39 +1,42 @@
-import 'dart:typed_data';
 import 'package:geolocator/geolocator.dart';
 import 'package:test_for_serial_port/app/models/measurement_model.dart';
 
-// Função para processar os dados recebidos da porta serial
-Future<List<MeasurementModel>> processSerialData(Uint8List data, Position? position) async {
-  if (data.length != 6 || data[5] != 13) {
-    throw Exception('Formato inválido de dados recebidos.');
+Future<List<MeasurementModel>> processSerialData(
+  String lineData,
+  Position? position,
+) async {
+  // Dividimos a linha de dados pelos espaços para separar os valores
+  List<String> dataParts = lineData.trim().split(' ');
+
+  // Verifica se temos exatamente 3 partes: id, número, número
+  if (dataParts.length != 3) {
+    throw Exception('Formato de dados inválido');
   }
 
-  final int sensorId = data[0]; // ID do sensor
-  final int sensor1Value = (data[1] << 8) | data[2]; // Valor do sensor 1
-  final int sensor2Value = (data[3] << 8) | data[4]; // Valor do sensor 2
-  final DateTime now = DateTime.now();
+  // Extrai o ID do sensor e as medições
+  final int sensorId = int.parse(dataParts[0]); // ID do sensor
+  final double sensor1Value =
+      double.parse(dataParts[1]); // Valor do primeiro medidor
+  final double sensor2Value =
+      double.parse(dataParts[2]); // Valor do segundo medidor
 
-  // Obter a localização atual (já passada por parâmetro)
-  double? latitude = position?.latitude;
-  double? longitude = position?.longitude;
+  // Cria dois MeasurementModels, um para cada medidor
+  List<MeasurementModel> measurements = [
+    MeasurementModel(
+      sensorId: sensorId,
+      value: sensor1Value,
+      timestamp: DateTime.now(),
+      latitude: position?.latitude,
+      longitude: position?.longitude,
+    ),
+    MeasurementModel(
+      sensorId: sensorId,
+      value: sensor2Value,
+      timestamp: DateTime.now(),
+      latitude: position?.latitude,
+      longitude: position?.longitude,
+    ),
+  ];
 
-  // Criar os objetos MeasurementModel para o sensor
-  MeasurementModel measurement1 = MeasurementModel(
-    sensorId: sensorId,
-    value: sensor1Value.toDouble(),
-    timestamp: now,
-    latitude: latitude,
-    longitude: longitude,
-  );
-
-  MeasurementModel measurement2 = MeasurementModel(
-    sensorId: sensorId,
-    value: sensor2Value.toDouble(),
-    timestamp: now,
-    latitude: latitude,
-    longitude: longitude,
-  );
-
-  // Retorna os dois MeasurementModels em uma lista
-  return [measurement1, measurement2];
+  return measurements;
 }
