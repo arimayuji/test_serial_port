@@ -9,6 +9,7 @@ class SerialPortSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Obtenha o SerialPortProvider do Modular
     final SerialPortProvider provider = Modular.get<SerialPortProvider>();
 
     return MultiProvider(
@@ -18,51 +19,83 @@ class SerialPortSelectionPage extends StatelessWidget {
         ),
       ],
       child: Scaffold(
-        body: Column(
-          children: [
-            const SizedBox(height: 10),
-            provider.availablePorts.isNotEmpty
-                ? Expanded(
-                    child: ListView.builder(
-                      itemCount: provider.availablePorts.length,
-                      itemBuilder: (context, index) {
-                        String portName = provider.availablePorts[index];
-                        return ListTile(
-                          title: Text(
-                            portName,
-                            style: TextStyle(color: AppColors.primary),
-                          ),
-                          trailing: provider.selectedPort == portName
-                              ? const Icon(Icons.check, color: Colors.green)
-                              : null,
-                          onTap: () {
-                            provider.selectPort(portName);
+        body: Consumer<SerialPortProvider>(
+          builder: (context, provider, child) {
+            return Column(
+              children: [
+                const SizedBox(height: 10),
+                provider.availablePorts.isNotEmpty
+                    ? Expanded(
+                        child: ListView.builder(
+                          itemCount: provider.availablePorts.length,
+                          itemBuilder: (context, index) {
+                            String portName = provider.availablePorts[index];
+                            bool isSelected = provider.selectedPort == portName;
+                            bool isAnotherPortInUse =
+                                provider.currentSensorId != null &&
+                                    provider.selectedPort != portName;
+
+                            return ListTile(
+                              title: Text(
+                                portName,
+                                style: TextStyle(color: AppColors.primary),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (!isSelected)
+                                    IconButton(
+                                      icon: const Icon(Icons.play_arrow),
+                                      color: isAnotherPortInUse
+                                          ? Colors
+                                              .grey 
+                                          : AppColors
+                                              .primary, 
+                                      onPressed: isAnotherPortInUse
+                                          ? null 
+                                          : () {
+                                              provider.selectPort(portName);
+                                            },
+                                    ),
+                                  if (isSelected)
+                                    IconButton(
+                                      icon: const Icon(Icons.stop),
+                                      color: Colors.red,
+                                      onPressed: () {
+                                        provider.stopReading();
+                                      },
+                                    ),
+                                ],
+                              ),
+                            );
                           },
-                        );
-                      },
-                    ),
-                  )
-                : Center(
-                    child: Text(
-                    'Nenhuma porta serial disponível',
-                    style: TextStyle(fontSize: 20, color: AppColors.primary),
-                  )),
-            const SizedBox(height: 20),
-            if (provider.selectedPort != null)
-              Column(
-                children: [
-                  Text(
-                    'Porta Selecionada: ${provider.selectedPort}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          'Nenhuma porta serial disponível',
+                          style:
+                              TextStyle(fontSize: 20, color: AppColors.primary),
+                        ),
+                      ),
+                const SizedBox(height: 20),
+                if (provider.selectedPort != null)
+                  Column(
+                    children: [
+                      Text(
+                        'Porta Selecionada: ${provider.selectedPort}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Estado atual da porta: ${provider.state.inputMessage}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Estado atual da porta: ${provider.state.inputMessage}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  )
-                ],
-              ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );

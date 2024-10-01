@@ -16,9 +16,10 @@ class SerialPortProvider extends ChangeNotifier {
   String? selectedPort;
   SerialPort? port;
   InputState _state = InputWaitingConnectionState();
-  Timer? _monitoringTimer;
   StreamSubscription? _portSubscription;
-  List<int> buffer = [];
+  List<String> buffer = [];
+  Timer? _monitorPortStatusTimer;
+
   final List<SensorModel> sensors = [];
   final LocationService locationService = LocationService();
 
@@ -28,28 +29,10 @@ class SerialPortProvider extends ChangeNotifier {
   List<MeasurementModel> sensor2TempMeasurements = [];
 
   SerialPortProvider() {
-    listAvailablePorts();
+    _startListAvailablePorts();
   }
 
   InputState get state => _state;
-
-  void startMonitoring() {
-    _monitoringTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      _checkConnection();
-    });
-  }
-
-  void _checkConnection() {
-    if (port != null && port!.isOpen) {
-      _updateState(InputCapturingDataState());
-      _startReading();
-    } else {
-      if (_state is! InputCapturingDataState) {
-        _updateState(InputConnectionClosedState());
-        _stopReading();
-      }
-    }
-  }
 
   void _updateState(InputState newState) {
     _state = newState;
@@ -57,52 +40,82 @@ class SerialPortProvider extends ChangeNotifier {
 
     switch (newState.runtimeType) {
       case const (InputWaitingConnectionState):
-        GlobalSnackBar.error('Nenhuma porta encontrada');
+        GlobalSnackBar.error(newState.inputMessage);
         break;
       case const (InputEstablishingConnectionState):
-        GlobalSnackBar.success('Porta encontrada e conectada');
+        GlobalSnackBar.success(newState.inputMessage);
         break;
       case const (InputCapturingDataState):
-        GlobalSnackBar.info('Captando dados...');
+        GlobalSnackBar.info(newState.inputMessage);
         break;
       case const (InputConnectionClosedState):
-        GlobalSnackBar.info('Porta desconectada');
+        GlobalSnackBar.info(newState.inputMessage);
         break;
       case const (InputErrorState):
-        GlobalSnackBar.error('Erro na porta serial');
+        GlobalSnackBar.error(newState.inputMessage);
         break;
     }
   }
 
   void _startReading() {
+    buffer.clear();
     try {
-      if (port == null || !port!.openReadWrite()) {
-        throw Exception('Erro ao abrir a porta');
+      if (selectedPort == null) {
+        GlobalSnackBar.error('Porta serial desconectada, encerrando leitura.');
+        return;
       }
 
-      final reader = SerialPortReader(port!);
+      if (_state is! InputConnectionClosedState) {
+        final reader = SerialPortReader(port!);
 
-      _portSubscription = reader.stream
-          .cast<List<int>>()
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen((line) async {
-        // Processa cada linha de dados
-        try {
-          Position? position = await locationService.getCurrentLocation();
-          List<MeasurementModel> measurements =
-              await processSerialData(line, position);
-
-          // Processa as medições para o sensor atual
-          _processMeasurements(measurements);
-
-          notifyListeners();
-        } catch (e) {
-          GlobalSnackBar.error('Erro ao processar dados: ${e.toString()}');
-        }
-      });
+        _portSubscription = reader.stream
+            .cast<List<int>>()
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())
+            .listen((line) {
+          buffer.add(line);
+        }, onDone: () {
+          _handlePortDisconnection();
+        }, onError: (error) {
+          _handlePortDisconnection();
+          GlobalSnackBar.error('Erro durante leitura: $error');
+        });
+      }
     } catch (e) {
       GlobalSnackBar.error('Erro ao iniciar a leitura: ${e.toString()}');
+    }
+  }
+
+  void _handlePortDisconnection() async {
+    _monitorPortStatusTimer?.cancel();
+    _portSubscription?.cancel();
+    port?.close();
+
+    selectedPort = null;
+    notifyListeners();
+
+    if (buffer.isNotEmpty) {
+      await _processBufferedLines();
+      finalizeReading();
+    }
+  }
+
+  Future<void> _processBufferedLines() async {
+    try {
+      Position? position = await locationService.getCurrentLocation();
+      for (String line in buffer) {
+        List<MeasurementModel> measurements = await processSerialData(
+          line,
+          position,
+        );
+        _processMeasurements(measurements);
+      }
+      _updateState(InputCapturingDataState());
+      notifyListeners();
+    } catch (e) {
+      GlobalSnackBar.error('Erro ao processar dados: ${e.toString()}');
+    } finally {
+      buffer.clear();
     }
   }
 
@@ -110,16 +123,15 @@ class SerialPortProvider extends ChangeNotifier {
     currentSensorId = measurements.first.sensorId.toString();
     sensor1TempMeasurements.add(measurements[0]);
     sensor2TempMeasurements.add(measurements[1]);
-
-    GlobalSnackBar.info(
-        'Medições temporárias do sensor $currentSensorId atualizadas.');
   }
 
   void finalizeReading() {
     if (currentSensorId == null) return;
 
-    SensorModel? sensor =
-        sensors.firstWhere((sensor) => sensor.id == currentSensorId);
+    SensorModel? sensor = sensors.firstWhere(
+      (sensor) => sensor.id == currentSensorId,
+      orElse: () => SensorModel(id: currentSensorId!, history: []),
+    );
 
     if (sensor1TempMeasurements.isNotEmpty &&
         sensor2TempMeasurements.isNotEmpty) {
@@ -130,6 +142,8 @@ class SerialPortProvider extends ChangeNotifier {
       );
 
       sensor.history.add(newHistory);
+
+      sensors.add(sensor);
 
       sensor1TempMeasurements.clear();
       sensor2TempMeasurements.clear();
@@ -143,47 +157,45 @@ class SerialPortProvider extends ChangeNotifier {
     }
   }
 
-  void _stopReading() {
+  void stopReading() {
     _portSubscription?.cancel();
     port?.close();
 
-    finalizeReading();
-    _updateState(InputConnectionClosedState());
-  }
-
-  void stopMonitoring() {
-    _monitoringTimer?.cancel();
-    _portSubscription?.cancel();
-    port?.close();
-    _setNoConnection();
-  }
-
-  void listAvailablePorts() {
-    availablePorts = SerialPort.availablePorts;
+    selectedPort = null;
     notifyListeners();
+
+    _processBufferedLines().then((_) {
+      finalizeReading();
+    });
+  }
+
+  void _startListAvailablePorts() {
+    Timer.periodic(const Duration(seconds: 5), (timer) {
+      availablePorts = SerialPort.availablePorts;
+      notifyListeners();
+    });
   }
 
   void selectPort(String portName) {
     selectedPort = portName;
     port = SerialPort(portName);
 
-    if (!port!.openReadWrite()) {
+    port!.config.baudRate = 115200;
+    port!.config.stopBits = 1;
+    port!.config.bits = 8;
+    port!.config.parity = SerialPortParity.none;
+
+    if (_state is InputConnectionClosedState) {
       selectedPort = null;
-      GlobalSnackBar.error('Erro ao abrir a porta $portName');
+      GlobalSnackBar.info(_state.inputMessage);
     } else {
       GlobalSnackBar.success('Porta $portName conectada com sucesso');
 
-      _updateState(InputCapturingDataState());
+      _updateState(InputEstablishingConnectionState());
 
       _startReading();
 
       notifyListeners();
     }
-  }
-
-  void _setNoConnection() {
-    selectedPort = null;
-    _updateState(InputWaitingConnectionState());
-    notifyListeners();
   }
 }

@@ -45,7 +45,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Widget errorBuild() {
     return Center(
-      child: Text('No data found',
+      child: Text(provider.sensors.toString(),
           style: Theme.of(context).textTheme.displayLarge),
     );
   }
