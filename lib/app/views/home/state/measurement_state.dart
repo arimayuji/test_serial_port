@@ -15,6 +15,10 @@ class InputCapturingDataState extends InputState {
   InputCapturingDataState() : super('Captando dados da porta serial...');
 }
 
+class InputProcessingDataState extends InputState {
+  InputProcessingDataState() : super('Processando dados da porta serial...');
+}
+
 class InputConnectionClosedState extends InputState {
   InputConnectionClosedState() : super('Conexão encerrada com porta serial desconectada.');
 }

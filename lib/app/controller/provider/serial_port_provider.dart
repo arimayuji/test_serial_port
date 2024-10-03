@@ -58,7 +58,6 @@ class SerialPortProvider extends ChangeNotifier {
   }
 
   void _startReading() {
-    buffer.clear();
     try {
       if (selectedPort == null) {
         GlobalSnackBar.error('Porta serial desconectada, encerrando leitura.');
@@ -67,6 +66,7 @@ class SerialPortProvider extends ChangeNotifier {
 
       if (_state is! InputConnectionClosedState) {
         final reader = SerialPortReader(port!);
+        port!.openRead();
 
         _portSubscription = reader.stream
             .cast<List<int>>()
@@ -87,31 +87,32 @@ class SerialPortProvider extends ChangeNotifier {
   }
 
   void _handlePortDisconnection() async {
-    _monitorPortStatusTimer?.cancel();
     _portSubscription?.cancel();
     port?.close();
 
     selectedPort = null;
-    notifyListeners();
 
     if (buffer.isNotEmpty) {
+      print('entrei no finalize');
       await _processBufferedLines();
       finalizeReading();
     }
+    print('saindo do finalize');
+    notifyListeners();
   }
 
   Future<void> _processBufferedLines() async {
     try {
       Position? position = await locationService.getCurrentLocation();
       for (String line in buffer) {
+        print('Linha processada: $line');
         List<MeasurementModel> measurements = await processSerialData(
           line,
           position,
         );
         _processMeasurements(measurements);
       }
-      _updateState(InputCapturingDataState());
-      notifyListeners();
+      _updateState(InputProcessingDataState());
     } catch (e) {
       GlobalSnackBar.error('Erro ao processar dados: ${e.toString()}');
     } finally {
@@ -150,7 +151,6 @@ class SerialPortProvider extends ChangeNotifier {
 
       GlobalSnackBar.success(
           'Histórico do sensor $currentSensorId criado e adicionado.');
-      notifyListeners();
     } else {
       GlobalSnackBar.error(
           'Erro ao criar o histórico: Dados insuficientes ou sensor não encontrado.');
@@ -158,32 +158,23 @@ class SerialPortProvider extends ChangeNotifier {
   }
 
   void stopReading() {
-    _portSubscription?.cancel();
-    port?.close();
-
-    selectedPort = null;
-    notifyListeners();
-
-    _processBufferedLines().then((_) {
-      finalizeReading();
-    });
+    _handlePortDisconnection();
   }
 
   void _startListAvailablePorts() {
     Timer.periodic(const Duration(seconds: 5), (timer) {
-      availablePorts = SerialPort.availablePorts;
-      notifyListeners();
+      List<String> currentPorts = SerialPort.availablePorts;
+
+      if (currentPorts.length != availablePorts.length) {
+        availablePorts = currentPorts;
+        notifyListeners();
+      }
     });
   }
 
   void selectPort(String portName) {
     selectedPort = portName;
     port = SerialPort(portName);
-
-    port!.config.baudRate = 115200;
-    port!.config.stopBits = 1;
-    port!.config.bits = 8;
-    port!.config.parity = SerialPortParity.none;
 
     if (_state is InputConnectionClosedState) {
       selectedPort = null;

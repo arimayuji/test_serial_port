@@ -9,26 +9,24 @@ class SerialPortSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Obtenha o SerialPortProvider do Modular
-    final SerialPortProvider provider = Modular.get<SerialPortProvider>();
-
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider<SerialPortProvider>(
-          create: (context) => provider,
-        ),
-      ],
-      child: Scaffold(
-        body: Consumer<SerialPortProvider>(
-          builder: (context, provider, child) {
-            return Column(
+    return ChangeNotifierProvider(
+      create: (_) => Modular.get<SerialPortProvider>(),
+      child: Consumer<SerialPortProvider>(
+        builder: (context, provider, child) {
+          return Scaffold(
+            body: Column(
               children: [
-                const SizedBox(height: 10),
+                const SizedBox(
+                  height: 10,
+                ),
                 provider.availablePorts.isNotEmpty
                     ? Expanded(
                         child: ListView.builder(
                           itemCount: provider.availablePorts.length,
-                          itemBuilder: (context, index) {
+                          itemBuilder: (
+                            context,
+                            index,
+                          ) {
                             String portName = provider.availablePorts[index];
                             bool isSelected = provider.selectedPort == portName;
                             bool isAnotherPortInUse =
@@ -47,12 +45,10 @@ class SerialPortSelectionPage extends StatelessWidget {
                                     IconButton(
                                       icon: const Icon(Icons.play_arrow),
                                       color: isAnotherPortInUse
-                                          ? Colors
-                                              .grey 
-                                          : AppColors
-                                              .primary, 
+                                          ? Colors.grey
+                                          : AppColors.primary,
                                       onPressed: isAnotherPortInUse
-                                          ? null 
+                                          ? null
                                           : () {
                                               provider.selectPort(portName);
                                             },
@@ -74,8 +70,10 @@ class SerialPortSelectionPage extends StatelessWidget {
                     : Center(
                         child: Text(
                           'Nenhuma porta serial disponível',
-                          style:
-                              TextStyle(fontSize: 20, color: AppColors.primary),
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                 const SizedBox(height: 20),
@@ -86,7 +84,9 @@ class SerialPortSelectionPage extends StatelessWidget {
                         'Porta Selecionada: ${provider.selectedPort}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(
+                        height: 10,
+                      ),
                       Text(
                         'Estado atual da porta: ${provider.state.inputMessage}',
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -94,9 +94,9 @@ class SerialPortSelectionPage extends StatelessWidget {
                     ],
                   ),
               ],
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
