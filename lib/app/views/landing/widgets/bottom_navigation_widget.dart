@@ -36,17 +36,12 @@ class _BottomNavigationWidgetState extends State<BottomNavigationWidget> {
           _buildBottomNavigationBarItem(
             icon: AppIcons.homeIconSecondary,
             index: 0,
-            route: '/',
+            route: '/home',
           ),
           _buildBottomNavigationBarItem(
             icon: AppIcons.historyIconSecondary,
             index: 1,
             route: '/history',
-          ),
-          _buildBottomNavigationBarItem(
-            icon: AppIcons.barChartIconSecondary,
-            index: 2,
-            route: '/serial_port_selection',
           ),
         ],
       ),

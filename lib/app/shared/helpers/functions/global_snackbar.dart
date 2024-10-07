@@ -24,7 +24,7 @@ abstract class GlobalSnackBar {
   static void success(String message) {
     if (rootScaffoldMessengerKey.currentState != null) {
       rootScaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: AppColors.success,
         width: 600,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 5),
@@ -39,7 +39,7 @@ abstract class GlobalSnackBar {
    static void info(String message) {
     if (rootScaffoldMessengerKey.currentState != null) {
       rootScaffoldMessengerKey.currentState!.showSnackBar(SnackBar(
-        backgroundColor: AppColors.blue,
+        backgroundColor: AppColors.primary,
         width: 600,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 5),

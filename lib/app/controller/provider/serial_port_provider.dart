@@ -18,7 +18,6 @@ class SerialPortProvider extends ChangeNotifier {
   InputState _state = InputWaitingConnectionState();
   StreamSubscription? _portSubscription;
   List<String> buffer = [];
-  Timer? _monitorPortStatusTimer;
 
   final List<SensorModel> sensors = [];
   final LocationService locationService = LocationService();
@@ -36,7 +35,6 @@ class SerialPortProvider extends ChangeNotifier {
 
   void _updateState(InputState newState) {
     _state = newState;
-    notifyListeners();
 
     switch (newState.runtimeType) {
       case const (InputWaitingConnectionState):
@@ -55,6 +53,7 @@ class SerialPortProvider extends ChangeNotifier {
         GlobalSnackBar.error(newState.inputMessage);
         break;
     }
+    notifyListeners();
   }
 
   void _startReading() {
@@ -73,8 +72,12 @@ class SerialPortProvider extends ChangeNotifier {
             .transform(utf8.decoder)
             .transform(const LineSplitter())
             .listen((line) {
+          if (port!.isOpen) {
+            _updateState(InputCapturingDataState());
+          }
           buffer.add(line);
         }, onDone: () {
+          _updateState(InputConnectionClosedState());
           _handlePortDisconnection();
         }, onError: (error) {
           _handlePortDisconnection();
@@ -88,16 +91,15 @@ class SerialPortProvider extends ChangeNotifier {
 
   void _handlePortDisconnection() async {
     _portSubscription?.cancel();
-    port?.close();
+    port!.close();
 
     selectedPort = null;
 
     if (buffer.isNotEmpty) {
-      print('entrei no finalize');
       await _processBufferedLines();
       finalizeReading();
     }
-    print('saindo do finalize');
+
     notifyListeners();
   }
 
@@ -105,7 +107,6 @@ class SerialPortProvider extends ChangeNotifier {
     try {
       Position? position = await locationService.getCurrentLocation();
       for (String line in buffer) {
-        print('Linha processada: $line');
         List<MeasurementModel> measurements = await processSerialData(
           line,
           position,
@@ -141,13 +142,16 @@ class SerialPortProvider extends ChangeNotifier {
         sensor1Measurements: List.from(sensor1TempMeasurements),
         sensor2Measurements: List.from(sensor2TempMeasurements),
       );
-
       sensor.history.add(newHistory);
 
-      sensors.add(sensor);
+      if (!sensors.contains(sensor)) {
+        sensors.add(sensor);
+      }
 
       sensor1TempMeasurements.clear();
       sensor2TempMeasurements.clear();
+
+      notifyListeners();
 
       GlobalSnackBar.success(
           'Histórico do sensor $currentSensorId criado e adicionado.');
@@ -158,7 +162,15 @@ class SerialPortProvider extends ChangeNotifier {
   }
 
   void stopReading() {
-    _handlePortDisconnection();
+    if (_portSubscription != null) {
+      _portSubscription!.cancel().then((_) {
+        _handlePortDisconnection();
+      }).catchError((error) {
+        GlobalSnackBar.error('Erro ao cancelar a leitura: $error');
+      });
+    } else {
+      _handlePortDisconnection();
+    }
   }
 
   void _startListAvailablePorts() {
@@ -188,5 +200,17 @@ class SerialPortProvider extends ChangeNotifier {
 
       notifyListeners();
     }
+  }
+
+  SensorModel? findSensorById(String sensorId) {
+    var result = sensors.firstWhere(
+      (sensor) => sensor.id == sensorId,
+    );
+
+    if (result is! StateError) {
+      return result;
+    }
+
+    return null;
   }
 }

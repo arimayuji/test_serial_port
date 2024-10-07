@@ -32,6 +32,5 @@ Future<List<MeasurementModel>> processSerialData(
       longitude: position?.longitude,
     ),
   ];
-
   return measurements;
 }
